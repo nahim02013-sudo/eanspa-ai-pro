@@ -1,0 +1,189 @@
+name: Build EANSPA AI PRO APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create Android Project
+        run: |
+          mkdir -p app/src/main/java/com/eanspa/aipro
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "EANSPA AI PRO"
+          include ':app'
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.eanspa.aipro'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.eanspa.aipro'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@android:style/Theme.Material.NoActionBar"
+                  android:label="EANSPA AI PRO"
+                  android:usesCleartextTraffic="false">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/eanspa/aipro/MainActivity.java <<'EOF'
+          package com.eanspa.aipro;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.view.Gravity;
+          import android.widget.*;
+
+          public class MainActivity extends Activity {
+              int red = Color.rgb(255, 45, 65);
+              LinearLayout layout;
+
+              public void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  getWindow().setStatusBarColor(Color.rgb(10,10,10));
+                  getWindow().setNavigationBarColor(Color.BLACK);
+
+                  layout = new LinearLayout(this);
+                  layout.setOrientation(1);
+                  layout.setPadding(28,35,28,25);
+                  layout.setBackgroundColor(Color.rgb(10,10,12));
+
+                  TextView title = new TextView(this);
+                  title.setText("EANSPA AI PRO");
+                  title.setTextColor(red);
+                  title.setTextSize(27);
+                  title.setTypeface(null, Typeface.BOLD);
+                  title.setGravity(Gravity.CENTER);
+                  layout.addView(title);
+
+                  TextView subtitle = new TextView(this);
+                  subtitle.setText("YOUR SMART AI ASSISTANT");
+                  subtitle.setTextColor(Color.LTGRAY);
+                  subtitle.setGravity(Gravity.CENTER);
+                  subtitle.setPadding(0,8,0,35);
+                  layout.addView(subtitle);
+
+                  TextView welcome = new TextView(this);
+                  welcome.setText("Hello! I am EANSPA.\\nHow can I help you today?");
+                  welcome.setTextColor(Color.WHITE);
+                  welcome.setTextSize(19);
+                  welcome.setPadding(16,20,16,20);
+                  welcome.setBackgroundColor(Color.rgb(28,28,32));
+                  layout.addView(welcome);
+
+                  TextView note = new TextView(this);
+                  note.setText("AI chat connection will be added in a later update.");
+                  note.setTextColor(Color.LTGRAY);
+                  note.setPadding(0,22,0,15);
+                  layout.addView(note);
+
+                  EditText input = new EditText(this);
+                  input.setHint("Type your message...");
+                  input.setHintTextColor(Color.GRAY);
+                  input.setTextColor(Color.WHITE);
+                  input.setSingleLine(true);
+                  layout.addView(input);
+
+                  Button send = new Button(this);
+                  send.setText("SEND");
+                  send.setTextColor(Color.WHITE);
+                  send.setBackgroundTintList(
+                      android.content.res.ColorStateList.valueOf(red));
+                  layout.addView(send);
+
+                  send.setOnClickListener(v -> {
+                      String message = input.getText().toString().trim();
+                      if (!message.isEmpty()) {
+                          Toast.makeText(this,
+                              "Chat service coming soon!",
+                              Toast.LENGTH_SHORT).show();
+                          input.setText("");
+                      }
+                  });
+
+                  setContentView(layout);
+              }
+          }
+          EOF
+
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EANSPA-AI-PRO-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
